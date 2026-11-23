@@ -1,0 +1,81 @@
+
+name: Update Weather News
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get website files
+        uses: actions/checkout@v4
+
+      - name: Retrieve weather news
+        env:
+          GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          query = '(weather OR typhoon OR rainfall OR PAGASA) AND (Philippines OR Luzon OR Manila)'
+          params = urllib.parse.urlencode({
+              'q': query,
+              'lang': 'en',
+              'country': 'ph',
+              'max': 10,
+              'apikey': os.environ['GNEWS_API_KEY']
+          })
+
+          url = 'https://gnews.io/api/v4/search?' + params
+
+          request = urllib.request.Request(
+              url,
+              headers={'User-Agent': 'ProjectAirway/1.0'}
+          )
+
+          with urllib.request.urlopen(request, timeout=30) as response:
+              data = json.load(response)
+
+          articles = []
+          for article in data.get('articles', []):
+              articles.append({
+                  'title': article.get('title'),
+                  'description': article.get('description'),
+                  'image': article.get('image'),
+                  'url': article.get('url'),
+                  'publishedAt': article.get('publishedAt'),
+                  'source': article.get('source', {}).get('name')
+              })
+
+          with open('news.json', 'w', encoding='utf-8') as file:
+              json.dump(articles, file, ensure_ascii=False, indent=2)
+
+          print(f"Successfully retrieved {len(articles)} articles.")
+          PY
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Publish website
+        uses: actions/deploy-pages@v4
+        
