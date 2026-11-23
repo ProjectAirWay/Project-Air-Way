@@ -406,6 +406,89 @@ setInterval(() => {
 // Refresh weather data every 15 minutes
 loadWeather();
 setInterval(loadWeather, 15 * 60 * 1000);
+  
+// LATEST WEATHER NEWS SYSTEM
+async function loadNews() {
+  const container = document.getElementById("news-articles");
+
+  try {
+    const response = await fetch("news.json", {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("News file unavailable");
+    }
+
+    const articles = await response.json();
+
+    container.innerHTML = "";
+
+    if (!articles.length) {
+      container.textContent = "No weather news articles are available right now.";
+      return;
+    }
+
+    articles.forEach(article => {
+      const card = document.createElement("article");
+      card.style.cssText =
+        "background:var(--card);padding:16px;border-radius:12px;margin:18px 0;";
+
+      if (article.image) {
+        const image = document.createElement("img");
+        image.src = article.image;
+        image.alt = "News article image";
+        image.loading = "lazy";
+        image.style.cssText =
+          "width:100%;max-height:240px;object-fit:cover;border-radius:8px;";
+        card.appendChild(image);
+      }
+
+      const title = document.createElement("h3");
+      const link = document.createElement("a");
+
+      link.textContent = article.title || "Untitled article";
+      link.href = article.url || "#";
+      link.style.color = "var(--ink)";
+
+      if (article.url && /^https?:\/\//i.test(article.url)) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+
+      title.appendChild(link);
+      card.appendChild(title);
+
+      const description = document.createElement("p");
+      description.textContent =
+        article.description || "No description available.";
+      card.appendChild(description);
+
+      const details = document.createElement("p");
+      details.style.cssText = "font-size:13px;opacity:0.75;";
+
+      const date = article.publishedAt
+        ? new Date(article.publishedAt).toLocaleDateString("en-PH")
+        : "Date unavailable";
+
+      details.textContent =
+        (article.source || "Unknown publisher") + " • " + date;
+
+      card.appendChild(details);
+      container.appendChild(card);
+    });
+
+  } catch (error) {
+    container.textContent =
+      "Unable to load news articles. Please try again later.";
+
+    console.error("News loading error:", error);
+  }
+}
+
+// Load articles when the website opens
+loadNews();
+  
 
 window.addEventListener("hashchange",show);show();
 </script>
